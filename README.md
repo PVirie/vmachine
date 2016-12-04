@@ -6,9 +6,9 @@ An implementation of a [thinking machine][rf1].
    
 ### Behavior
 
-* A generative model: the machine will learn to execute and produce most likely data sequences conditioned on past data.
-* Learning while executing: the machine accepts the very first data sequences as the inputs and learns from them.
-* Make decision when to learn more: the machine outputs a flag that tells external environment to feed more input data when it is not sure what to think next.
+* A generative model: the machine will learn to execute and produce most likely data sequences conditioned on a fixed sequence of past data.
+* Learning while executing: like LSTMs, the machine can keep information up to an arbitary step into the past; while like condition models, it only needs to be trained stepwise. 
+* The machine accepts the very first data sequences as the inputs and learns from them.
    
 License
 ----

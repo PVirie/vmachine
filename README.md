@@ -12,7 +12,7 @@ An implementation of a [thinking machine][rf1].
    
 ### Graph
 
-![alt tag](https://github.com/PVirie/vmachine/tree/master/artifacts/graph.png)
+![TensorFlow graph](/blob/master/artifacts/graph.png?raw=true "TensorFlow graph")
 
 License
 ----

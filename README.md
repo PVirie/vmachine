@@ -12,7 +12,7 @@ An implementation of a [thinking machine][rf1].
    
 ### Graph
 
-![TensorFlow graph](/artifacts/graph.png?raw=true "TensorFlow graph")
+<div style="text-align:center"><img src="/artifacts/graph.png?raw=true" width="500"></div>
 
 License
 ----

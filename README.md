@@ -12,7 +12,7 @@ An implementation of a [thinking machine][rf1].
    
 ### Graph
 
-<div style="text-align:center"><img src="/artifacts/graph.png?raw=true" width="500"></div>
+<img align="middle" src="/artifacts/graph.png?raw=true" width="500">
 
 License
 ----

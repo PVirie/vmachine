@@ -11,7 +11,7 @@ def generate_ones(rows, cols):
 
 
 def cross_entropy(y, z, variables):
-    cost = tf.reduce_sum(tf.mul(z, -tf.log(y)) + tf.mul((1 - z), -tf.log(1 - y)))
+    cost = tf.reduce_sum(tf.multiply(z, -tf.log(y)) + tf.multiply((1 - z), -tf.log(1 - y)))
     training_op = tf.train.AdamOptimizer(0.001).minimize(cost, var_list=variables)
     return {"op": training_op, "cost": cost}
 

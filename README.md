@@ -19,6 +19,7 @@ An implementation of a [thinking machine][rf1].
 1. Python 2.7.x 
 2. Cuda Toolkit 8.0 (https://developer.nvidia.com/cuda-toolkit)
 3. TensorFlow r1.0 (https://www.tensorflow.org/install/)
+4. array2gif https://github.com/tanyaschlusser/array2gif
 
 License
 ----

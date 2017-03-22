@@ -1,5 +1,7 @@
 import cv2
 import numpy as np
+import random
+import os
 from array2gif import write_gif
 
 
@@ -16,7 +18,21 @@ def create_polynomial_data_matrix(order, num_data=None):
 
 
 def gen_path(size, obj_size, path_length, path_complexity):
-    bases = [[0, 0], [0.5 * size[0], 0.1 * size[1]], [0.5 * size[0], 0.9 * size[1]], [1.0 * size[0], 1.0 * size[1]]]
+
+    bases = []
+    most_outer = 0
+    most_rad2 = 0
+    for i in xrange(path_complexity):
+        p = [random.uniform(obj_size / 2, size[0] - obj_size / 2), random.uniform(obj_size / 2, size[1] - obj_size / 2)]
+        bases.append(p)
+        v = (p[0] - size[0] / 2)**2 + (p[1] - size[1] / 2)**2
+        if v > most_rad2:
+            most_rad2 = v
+            most_outer = i
+
+    pivot = bases[most_outer]
+    dir = [size[0] / 2 - pivot[0], size[1] / 2 - pivot[1]]
+    bases = sorted(bases, key=lambda x: (x[0] - pivot[0]) * dir[0] + (x[1] - pivot[1]) * dir[1])
 
     A_ = np.linalg.pinv(create_polynomial_data_matrix(path_complexity))
 
@@ -50,15 +66,16 @@ def plot_path(path):
     cv2.waitKey(-1)
 
 
-def toGif(path):
+def toGif(path, filename):
     imgs = []
     for i in xrange(path.shape[0]):
         img = cv2.cvtColor((path[i] * 255).astype(np.uint8), cv2.COLOR_GRAY2RGB)
         imgs.append(np.transpose(img, [2, 0, 1]))
-    write_gif(imgs, './move.gif', fps=5)
+    write_gif(imgs, filename, fps=5)
 
 
 if __name__ == "__main__":
     path = draw_path((100, 100), 10, gen_path((100, 100), 10, 20, 4))
     plot_path(path)
-    # toGif(path)
+    artifact_path = os.path.dirname(os.path.abspath(__file__)) + "/../artifacts/"
+    toGif(path, artifact_path + "sample_path.gif")

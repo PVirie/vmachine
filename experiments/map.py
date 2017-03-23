@@ -1,60 +1,82 @@
 import cv2
 import numpy as np
 import random
+import math
 import os
+from Queue import PriorityQueue
 from array2gif import write_gif
 
 
-def create_polynomial_data_matrix(order, num_data=None):
+def search_path(minkowsky_map, start, end):
 
-    if num_data is None:
-        num_data = order
+    def to_queue(p, prev, distp):
+        if prev is None:
+            return ((p[0] - end[0])**2 + (p[1] - end[1])**2, (p[0], p[1], 0))
+        else:
+            return ((p[0] - end[0])**2 + (p[1] - end[1])**2 + prev[2] + distp, (p[0], p[1], prev[2] + distp, prev))
 
-    step = 1.0 / (num_data - 1)
-    X = np.tile(np.arange(0, 1.0 + step, step, dtype=np.float32), (order, 1))
-    A = np.power(X.transpose(), np.tile(np.arange(0, order, 1.0, dtype=np.float32), (num_data, 1)))
+    q = PriorityQueue()
+    q.put(to_queue((start[0], start[1]), None, 0.0))
 
-    return A
+    def off_range(point):
+        return p[1] < 0 or p[1] >= minkowsky_map.shape[0] or p[0] < 0 or p[0] >= minkowsky_map.shape[1]
 
-
-def gen_path(size, obj_size, path_length, path_complexity):
-
-    bases = []
-    most_outer = 0
-    most_rad2 = 0
-    for i in xrange(path_complexity):
-        p = [random.uniform(obj_size / 2, size[0] - obj_size / 2), random.uniform(obj_size / 2, size[1] - obj_size / 2)]
-        bases.append(p)
-        v = (p[0] - size[0] / 2)**2 + (p[1] - size[1] / 2)**2
-        if v > most_rad2:
-            most_rad2 = v
-            most_outer = i
-
-    pivot = bases[most_outer]
-    dir = [size[0] / 2 - pivot[0], size[1] / 2 - pivot[1]]
-    bases = sorted(bases, key=lambda x: (x[0] - pivot[0]) * dir[0] + (x[1] - pivot[1]) * dir[1])
-
-    A_ = np.linalg.pinv(create_polynomial_data_matrix(path_complexity))
-
-    npb = np.asarray(bases, dtype=np.float32)
-    px = np.matmul(A_, npb[:, 0:1])
-    py = np.matmul(A_, npb[:, 1:2])
-
-    A = create_polynomial_data_matrix(path_complexity, path_length)
-
-    X = np.matmul(A, px)
-    Y = np.matmul(A, py)
+    out = None
+    visited = np.zeros((minkowsky_map.shape[0], minkowsky_map.shape[1]), dtype=np.float32)
+    while not q.empty():
+        p = q.get()[1]
+        if p[0] == end[0] and p[1] == end[1]:
+            out = p
+            break
+        if off_range(p) or visited[p[1], p[0]] > 0.5 or minkowsky_map[p[1], p[0]] > 0.5:
+            continue
+        visited[p[1], p[0]] = 1
+        q.put(to_queue((p[0] + 0, p[1] - 1), p, 1))
+        q.put(to_queue((p[0] - 1, p[1] + 0), p, 1))
+        q.put(to_queue((p[0] + 1, p[1] + 0), p, 1))
+        q.put(to_queue((p[0] + 0, p[1] + 1), p, 1))
+        q.put(to_queue((p[0] - 1, p[1] - 1), p, math.sqrt(2)))
+        q.put(to_queue((p[0] + 1, p[1] - 1), p, math.sqrt(2)))
+        q.put(to_queue((p[0] - 1, p[1] + 1), p, math.sqrt(2)))
+        q.put(to_queue((p[0] + 1, p[1] + 1), p, math.sqrt(2)))
 
     path = []
-    for i in xrange(path_length):
-        path.append((X[i], Y[i]))
+    if out is None:
+        return path
+
+    p = out
+    while True:
+        path.append((p[0], p[1]))
+        if len(p) > 3:
+            p = p[3]
+        else:
+            break
+    path.reverse()
     return path
 
 
-def draw_path(size, obj_size, path):
-    canvas = np.zeros((len(path), size[0], size[1]), dtype=np.float32)
-    for i in xrange(len(path)):
-        cv2.circle(canvas[i], path[i], obj_size / 2, (1.0, 1.0, 1.0), -1)
+def draw_map(size, obj_size, map_complexity):
+    canvas = np.zeros((size[0], size[1]), dtype=np.float32)
+    minkowsky = np.zeros((size[0], size[1]), dtype=np.float32)
+
+    for i in xrange(map_complexity):
+        sx = random.randint(2, 15)
+        sy = random.randint(2, 15)
+        py = random.randint(5, size[0] - 5)
+        px = random.randint(5, size[1] - 5)
+        cv2.rectangle(canvas, (px - sx, py - sy), (px + sx, py + sy), (1.0, 1.0, 1.0), -1)
+        cv2.rectangle(minkowsky, (px - sx - obj_size / 2, py - sy - obj_size / 2), (px + sx + obj_size / 2, py + sy + obj_size / 2), (1.0, 1.0, 1.0), -1)
+
+    return canvas, minkowsky
+
+
+def draw_path(space, obj_size, path, fixed_length=20):
+    canvas = np.zeros((fixed_length, space.shape[0], space.shape[1]), dtype=np.float32)
+    step = (len(path) - 1) * 1.0 / (fixed_length - 1)
+    for i in xrange(0, fixed_length):
+        canvas[i] = space
+        p = path[int(i * step)]
+        cv2.circle(canvas[i], (p[0], p[1]), obj_size / 2, (1.0, 1.0, 1.0), -1)
     return canvas
 
 
@@ -75,7 +97,12 @@ def toGif(path, filename):
 
 
 if __name__ == "__main__":
-    path = draw_path((100, 100), 10, gen_path((100, 100), 10, 20, 4))
-    plot_path(path)
-    artifact_path = os.path.dirname(os.path.abspath(__file__)) + "/../artifacts/"
-    toGif(path, artifact_path + "sample_path.gif")
+    space, minkowsky = draw_map((100, 100), 10, 6)
+    path = search_path(minkowsky, (5, random.randint(5, 95)), (95, random.randint(5, 95)))
+    if len(path) <= 0:
+        print "no path is possible!"
+    else:
+        frames = draw_path(space, 10, path, fixed_length=20)
+        plot_path(frames)
+        artifact_path = os.path.dirname(os.path.abspath(__file__)) + "/../artifacts/"
+        toGif(frames, artifact_path + "sample_path.gif")

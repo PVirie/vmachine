@@ -21,7 +21,7 @@ class Component:
             with tf.variable_scope("memory")as memory_scope:
                 print memory_scope.name
                 self.memory_scope = memory_scope
-                self.Mw = matter.BeliefNet(component_size, depth=5)
+                self.Mw = matter.BeliefNet(component_size, depth=20)
 
     def generative_focus(self, pasts):
         return tf.nn.softmax(tf.reshape(self.Gw.forward(pasts), [self.sizes['input_size'], self.sizes['component_size']]), 0)

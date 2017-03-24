@@ -1,12 +1,13 @@
 import tensorflow as tf
+import numpy as np
 import util
 import lobe
 
 
 class Machine:
 
-    def __init__(self, input_size, total_pasts, num_components):
-        self.sess = tf.Session()
+    def __init__(self, sess, input_size, total_pasts, num_components):
+        self.sess = sess
         self.input = tf.placeholder(tf.float32, [1, input_size])
         self.pasts = tf.placeholder(tf.float32, [total_pasts, input_size])
 
@@ -27,12 +28,6 @@ class Machine:
         self.learn_content_operation = util.l2_loss(self.backward_thoughts, self.input, variables)
 
         self.saver = tf.train.Saver(keep_checkpoint_every_n_hours=1)
-
-        # Before starting, initialize the variables.  We will 'run' this first.
-        init = tf.global_variables_initializer()
-
-        # Launch the graph.
-        self.sess.run(init)
 
     def improve_thinking(self, pasts, session_name, max_iteration=100):
         for step in xrange(max_iteration):
@@ -60,3 +55,20 @@ class Machine:
 
     def load_last(self, directory):
         self.saver.restore(self.sess, tf.train.latest_checkpoint(directory))
+
+
+if __name__ == '__main__':
+    sess = tf.Session()
+    inputs = np.where(np.random.rand(10, 100) > 0.5, np.ones((10, 100), dtype=np.float32), 0)
+    machine = Machine(sess, 100, 4, 3)
+    sess.run(tf.global_variables_initializer())
+
+    for i in xrange(4, inputs.shape[0]):
+        pasts = inputs[i - 4:i, :]
+        input_data = inputs[i:i + 1, :]
+        print machine.generate_thought(pasts)
+        print "-----------"
+        # when the generated thought is far from the example
+        machine.learn(input_data, pasts, "../artifacts/demo", 5)
+        # otherwise memorize own thought for later use
+        machine.improve_thinking(pasts, "../artifacts/demo", 5)

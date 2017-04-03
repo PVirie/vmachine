@@ -85,6 +85,7 @@ def plot_path(path):
     temp[:, 0, :] = 1
     temp[:, :, 0] = 1
     cv2.imshow("a", np.reshape(np.transpose(temp, (1, 0, 2)), (100, -1)))
+    cv2.moveWindow("a", 100, 100)
     cv2.waitKey(-1)
 
 

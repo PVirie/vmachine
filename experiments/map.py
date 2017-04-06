@@ -11,9 +11,9 @@ def search_path(minkowsky_map, start, end):
 
     def to_queue(p, prev, distp):
         if prev is None:
-            return ((p[0] - end[0])**2 + (p[1] - end[1])**2, (p[0], p[1], 0))
+            return (distp, (p[0], p[1], 0))
         else:
-            return ((p[0] - end[0])**2 + (p[1] - end[1])**2 + prev[2] + distp, (p[0], p[1], prev[2] + distp, prev))
+            return (prev[2] + distp, (p[0], p[1], prev[2] + distp, prev))
 
     q = PriorityQueue()
     q.put(to_queue((start[0], start[1]), None, 0.0))

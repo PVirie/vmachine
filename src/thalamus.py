@@ -8,8 +8,11 @@ class Machine:
 
     def __init__(self, sess, input_size, total_pasts, num_components, belief_depth):
         self.sess = sess
-        self.input = tf.placeholder(tf.float32, [1, input_size])
-        self.pasts = tf.placeholder(tf.float32, [total_pasts, input_size])
+        self.input_initializer = tf.placeholder(tf.float32, [1, input_size])
+        self.pasts_initializer = tf.placeholder(tf.float32, [total_pasts, input_size])
+
+        self.input = tf.Variable(self.input_initializer, trainable=False, collections=[])
+        self.pasts = tf.Variable(self.pasts_initializer, trainable=False, collections=[])
 
         self.generated_thoughts = tf.zeros([1, input_size], dtype=tf.float32)
         self.backward_thoughts = tf.zeros([1, input_size], dtype=tf.float32)
@@ -30,16 +33,19 @@ class Machine:
         self.saver = tf.train.Saver(keep_checkpoint_every_n_hours=1)
 
     def improve_thinking(self, pasts, session_name, max_iteration=100):
+        sess.run(self.pasts.initializer, feed_dict={self.pasts_initializer: pasts})
         for step in xrange(max_iteration):
-            clist = self.sess.run(self.improve_thinking_operations, feed_dict={self.pasts: pasts})
+            clist = self.sess.run(self.improve_thinking_operations)
             print clist
             print "-----------"
             if step % 100 == 0:
                 self.saver.save(self.sess, session_name)
 
     def learn(self, input, pasts, session_name, max_iteration=100):
+        sess.run(self.input.initializer, feed_dict={self.input_initializer: input})
+        sess.run(self.pasts.initializer, feed_dict={self.pasts_initializer: pasts})
         for step in xrange(max_iteration):
-            v_, clist = self.sess.run((self.learn_content_operation, self.learn_operations), feed_dict={self.input: input, self.pasts: pasts})
+            v_, clist = self.sess.run((self.learn_content_operation, self.learn_operations))
             print v_
             print clist
             print "-----------"
@@ -47,6 +53,7 @@ class Machine:
                 self.saver.save(self.sess, session_name)
 
     def generate_thought(self, pasts):
+        sess.run(self.pasts.initializer, feed_dict={self.pasts_initializer: pasts})
         return self.sess.run(self.generated_thoughts, feed_dict={self.pasts: pasts})
 
     def load_session(self, session_name):

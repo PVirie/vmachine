@@ -59,51 +59,71 @@ def draw_map(size, obj_size, map_complexity):
     canvas = np.zeros((size[0], size[1]), dtype=np.float32)
     minkowsky = np.zeros((size[0], size[1]), dtype=np.float32)
 
+    half_obj_size = obj_size / 2
     for i in xrange(map_complexity):
-        sx = random.randint(2, 15)
-        sy = random.randint(2, 15)
-        py = random.randint(5, size[0] - 5)
-        px = random.randint(5, size[1] - 5)
+        sx = random.randint(2, 15) * size[1] / 100
+        sy = random.randint(2, 15) * size[0] / 100
+        py = random.randint(half_obj_size, size[0] - half_obj_size)
+        px = random.randint(half_obj_size, size[1] - half_obj_size)
         cv2.rectangle(canvas, (px - sx, py - sy), (px + sx, py + sy), (1.0, 1.0, 1.0), -1)
-        cv2.rectangle(minkowsky, (px - sx - obj_size / 2, py - sy - obj_size / 2), (px + sx + obj_size / 2, py + sy + obj_size / 2), (1.0, 1.0, 1.0), -1)
+        cv2.rectangle(minkowsky, (px - sx - half_obj_size, py - sy - half_obj_size), (px + sx + half_obj_size, py + sy + half_obj_size), (1.0, 1.0, 1.0), -1)
 
     return canvas, minkowsky
 
 
-def draw_path(space, obj_size, path, fixed_length=20):
+def draw_path(space, obj_size, path, length_modifier=0.2):
+    path_length = len(path)
+    if length_modifier < 1:
+        fixed_length = int(path_length * length_modifier) + 1
+    else:
+        fixed_length = int(length_modifier)
     canvas = np.zeros((fixed_length, space.shape[0], space.shape[1]), dtype=np.float32)
-    step = (len(path) - 1) * 1.0 / (fixed_length - 1)
-    for i in xrange(0, fixed_length):
+    half_obj_size = obj_size / 2
+    # draw target configuration on the first frame
+    cv2.circle(canvas[0], (path[path_length - 1][0], path[path_length - 1][1]), half_obj_size, (1.0, 1.0, 1.0), -1)
+    # then draw a series of movement
+    step = (path_length - 1) * 1.0 / (fixed_length - 2)
+    for i in xrange(1, fixed_length):
         canvas[i] = space
-        p = path[int(i * step)]
-        cv2.circle(canvas[i], (p[0], p[1]), obj_size / 2, (1.0, 1.0, 1.0), -1)
+        p = path[int((i - 1) * step)]
+        cv2.circle(canvas[i], (p[0], p[1]), half_obj_size, (1.0, 1.0, 1.0), -1)
     return canvas
 
 
-def plot_path(path):
-    temp = np.copy(path)
+def get_valid_data(map_size, obj_size, map_complexity, data_length):
+    while True:
+        space, minkowsky = draw_map(map_size, obj_size, map_complexity)
+        half_obj_size = obj_size / 2
+        map_offset_x = map_size[1] - half_obj_size
+        map_offset_y = map_size[0] - half_obj_size
+        path = search_path(minkowsky, (half_obj_size, random.randint(half_obj_size, map_offset_y)), (map_offset_x, random.randint(half_obj_size, map_offset_y)))
+        if len(path) <= 0:
+            print "no path is possible!"
+        else:
+            frames = draw_path(space, obj_size, path, data_length)
+            break
+    return frames
+
+
+def plot_path(frames, map_size):
+    temp = np.copy(frames)
     temp[:, 0, :] = 1
     temp[:, :, 0] = 1
-    cv2.imshow("a", np.reshape(np.transpose(temp, (1, 0, 2)), (100, -1)))
+    cv2.imshow("a", np.reshape(np.transpose(temp, (1, 0, 2)), (map_size[0], -1)))
     cv2.moveWindow("a", 100, 100)
     cv2.waitKey(-1)
 
 
-def toGif(path, filename):
+def toGif(frames, filename):
     imgs = []
-    for i in xrange(path.shape[0]):
-        img = cv2.cvtColor((path[i] * 255).astype(np.uint8), cv2.COLOR_GRAY2RGB)
+    for i in xrange(frames.shape[0]):
+        img = cv2.cvtColor((frames[i] * 255).astype(np.uint8), cv2.COLOR_GRAY2RGB)
         imgs.append(np.transpose(img, [2, 0, 1]))
     write_gif(imgs, filename, fps=5)
 
 
 if __name__ == "__main__":
-    space, minkowsky = draw_map((100, 100), 10, 6)
-    path = search_path(minkowsky, (5, random.randint(5, 95)), (95, random.randint(5, 95)))
-    if len(path) <= 0:
-        print "no path is possible!"
-    else:
-        frames = draw_path(space, 10, path, fixed_length=20)
-        plot_path(frames)
-        artifact_path = os.path.dirname(os.path.abspath(__file__)) + "/../artifacts/"
-        toGif(frames, artifact_path + "sample_path.gif")
+    frames = get_valid_data((100, 100), 10, 6, 0.2)
+    artifact_path = os.path.dirname(os.path.abspath(__file__)) + "/../artifacts/"
+    toGif(frames, artifact_path + "sample_path.gif")
+    plot_path(frames, (100, 100))

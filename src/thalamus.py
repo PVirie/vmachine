@@ -18,6 +18,7 @@ class Machine:
         self.backward_thoughts = tf.zeros([1, input_size], dtype=tf.float32)
         self.improve_thinking_operations = []
         self.learn_operations = []
+        self.reset_memory_operations = []
         self.components = []
         for i in xrange(num_components):
             self.components.append(lobe.Component(input_size / num_components, input_size, total_pasts, belief_depth, "C" + str(i)))
@@ -26,6 +27,7 @@ class Machine:
             self.backward_thoughts = self.backward_thoughts + v
             self.improve_thinking_operations.append(self.components[i].get_improve_thinking_operation())
             self.learn_operations.append(self.components[i].get_learn_operation())
+            self.reset_memory_operations.append(self.components[i].get_reset_memory_operation())
 
         variables = [var for var in tf.global_variables() if "content" in var.name]
         self.learn_content_operation = util.l2_loss(self.backward_thoughts, self.input, variables)
@@ -33,7 +35,7 @@ class Machine:
         self.saver = tf.train.Saver(keep_checkpoint_every_n_hours=1)
 
     def improve_thinking(self, pasts, session_name, max_iteration=100):
-        sess.run(self.pasts.initializer, feed_dict={self.pasts_initializer: pasts})
+        self.sess.run(self.pasts.initializer, feed_dict={self.pasts_initializer: pasts})
         for step in xrange(max_iteration):
             clist = self.sess.run(self.improve_thinking_operations)
             print clist
@@ -42,8 +44,8 @@ class Machine:
                 self.saver.save(self.sess, session_name)
 
     def learn(self, input, pasts, session_name, max_iteration=100):
-        sess.run(self.input.initializer, feed_dict={self.input_initializer: input})
-        sess.run(self.pasts.initializer, feed_dict={self.pasts_initializer: pasts})
+        self.sess.run(self.input.initializer, feed_dict={self.input_initializer: input})
+        self.sess.run(self.pasts.initializer, feed_dict={self.pasts_initializer: pasts})
         for step in xrange(max_iteration):
             v_, clist = self.sess.run((self.learn_content_operation, self.learn_operations))
             print v_
@@ -53,8 +55,11 @@ class Machine:
                 self.saver.save(self.sess, session_name)
 
     def generate_thought(self, pasts):
-        sess.run(self.pasts.initializer, feed_dict={self.pasts_initializer: pasts})
-        return self.sess.run(self.generated_thoughts, feed_dict={self.pasts: pasts})
+        self.sess.run(self.pasts.initializer, feed_dict={self.pasts_initializer: pasts})
+        return self.sess.run(self.generated_thoughts)
+
+    def reset_memory(self):
+        return self.sess.run(self.reset_memory_operations)
 
     def load_session(self, session_name):
         print "loading from last save..."

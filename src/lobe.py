@@ -59,6 +59,7 @@ class Component:
         self.learn_memory_operation = util.cross_entropy(m, h, self.get_memory_variables())
         self.learn_focus_operation = util.cross_entropy(s, h, self.get_selective_focus_variables())
         self.improve_thinking_operation = util.cross_entropy(s, m, self.get_selective_focus_variables())
+        self.reset_memory_operation = self.Mw.get_reset_operation()
 
         return u, v
 
@@ -76,3 +77,6 @@ class Component:
 
     def get_improve_thinking_operation(self):
         return self.improve_thinking_operation
+
+    def get_reset_memory_operation(self):
+        return self.reset_memory_operation

@@ -105,6 +105,13 @@ def get_valid_data(map_size, obj_size, map_complexity, length_modifier):
     return frames
 
 
+def to_numpy(frame_list, map_size):
+    frames = np.zeros((len(frame_list), map_size[0], map_size[1]), dtype=np.float32)
+    for i in xrange(len(frame_list)):
+        frames[i, :] = np.reshape(frame_list[i], map_size)
+    return frames
+
+
 def plot_path(frames, map_size):
     temp = np.copy(frames)
     temp[:, 0, :] = 1

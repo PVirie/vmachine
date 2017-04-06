@@ -5,7 +5,7 @@ import util
 
 class Component:
 
-    def __init__(self, component_size, input_size, total_past_steps, scope_name):
+    def __init__(self, component_size, input_size, total_past_steps, belief_depth, scope_name):
         self.sizes = {'input_size': input_size, 'component_size': component_size, 'scope_name': scope_name}
 
         with tf.variable_scope(scope_name):
@@ -21,7 +21,7 @@ class Component:
             with tf.variable_scope("memory")as memory_scope:
                 print memory_scope.name
                 self.memory_scope = memory_scope
-                self.Mw = matter.BeliefNet(component_size, depth=20)
+                self.Mw = matter.BeliefNet(component_size, depth=belief_depth)
 
     def generative_focus(self, pasts):
         return tf.nn.softmax(tf.reshape(self.Gw.forward(pasts), [self.sizes['input_size'], self.sizes['component_size']]), 0)

@@ -6,7 +6,7 @@ import lobe
 
 class Machine:
 
-    def __init__(self, sess, input_size, total_pasts, num_components):
+    def __init__(self, sess, input_size, total_pasts, num_components, belief_depth):
         self.sess = sess
         self.input = tf.placeholder(tf.float32, [1, input_size])
         self.pasts = tf.placeholder(tf.float32, [total_pasts, input_size])
@@ -17,7 +17,7 @@ class Machine:
         self.learn_operations = []
         self.components = []
         for i in xrange(num_components):
-            self.components.append(lobe.Component(input_size / num_components, input_size, total_pasts, "C" + str(i)))
+            self.components.append(lobe.Component(input_size / num_components, input_size, total_pasts, belief_depth, "C" + str(i)))
             u, v = self.components[i].build_graphs(self.input, tf.reshape(self.pasts, [-1, total_pasts * input_size]))
             self.generated_thoughts = self.generated_thoughts + u
             self.backward_thoughts = self.backward_thoughts + v
@@ -60,7 +60,7 @@ class Machine:
 if __name__ == '__main__':
     sess = tf.Session()
     inputs = np.where(np.random.rand(10, 100) > 0.5, np.ones((10, 100), dtype=np.float32), 0)
-    machine = Machine(sess, 100, 4, 3)
+    machine = Machine(sess, 100, 4, 3, 5)
     sess.run(tf.global_variables_initializer())
 
     for i in xrange(4, inputs.shape[0]):

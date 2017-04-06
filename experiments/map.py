@@ -90,7 +90,7 @@ def draw_path(space, obj_size, path, length_modifier=0.2):
     return canvas
 
 
-def get_valid_data(map_size, obj_size, map_complexity, data_length):
+def get_valid_data(map_size, obj_size, map_complexity, length_modifier):
     while True:
         space, minkowsky = draw_map(map_size, obj_size, map_complexity)
         half_obj_size = obj_size / 2
@@ -100,7 +100,7 @@ def get_valid_data(map_size, obj_size, map_complexity, data_length):
         if len(path) <= 0:
             print "no path is possible!"
         else:
-            frames = draw_path(space, obj_size, path, data_length)
+            frames = draw_path(space, obj_size, path, length_modifier)
             break
     return frames
 

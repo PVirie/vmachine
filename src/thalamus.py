@@ -38,21 +38,19 @@ class Machine:
         self.sess.run(self.pasts.initializer, feed_dict={self.pasts_initializer: pasts})
         for step in xrange(max_iteration):
             clist = self.sess.run(self.improve_thinking_operations)
-            print clist
-            print "-----------"
-            if step % 100 == 0:
-                self.saver.save(self.sess, session_name)
+        print clist
+        print "-----------"
+        self.saver.save(self.sess, session_name)
 
     def learn(self, input, pasts, session_name, max_iteration=100):
         self.sess.run(self.input.initializer, feed_dict={self.input_initializer: input})
         self.sess.run(self.pasts.initializer, feed_dict={self.pasts_initializer: pasts})
         for step in xrange(max_iteration):
             v_, clist = self.sess.run((self.learn_content_operation, self.learn_operations))
-            print v_
-            print clist
-            print "-----------"
-            if step % 100 == 0:
-                self.saver.save(self.sess, session_name)
+        print v_
+        print clist
+        print "-----------"
+        self.saver.save(self.sess, session_name)
 
     def generate_thought(self, pasts):
         self.sess.run(self.pasts.initializer, feed_dict={self.pasts_initializer: pasts})

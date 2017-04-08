@@ -16,8 +16,8 @@ class Machine:
 
         self.generated_thoughts = tf.zeros([1, input_size], dtype=tf.float32)
         self.backward_thoughts = tf.zeros([1, input_size], dtype=tf.float32)
-        self.improve_thinking_operations = []
-        self.learn_operations = []
+        self.improve_focus_operations = []
+        self.memorize_operations = []
         self.reset_memory_operations = []
         self.components = []
         for i in xrange(num_components):
@@ -25,32 +25,26 @@ class Machine:
             u, v = self.components[i].build_graphs(self.input, tf.reshape(self.pasts, [-1, total_pasts * input_size]))
             self.generated_thoughts = self.generated_thoughts + u
             self.backward_thoughts = self.backward_thoughts + v
-            self.improve_thinking_operations.append(self.components[i].get_improve_thinking_operation())
-            self.learn_operations.append(self.components[i].get_learn_operation())
+            self.improve_focus_operations.append(self.components[i].get_improve_focus_operation())
+            self.memorize_operations.append(self.components[i].get_memorize_operation())
             self.reset_memory_operations.append(self.components[i].get_reset_memory_operation())
 
         variables = [var for var in tf.global_variables() if "content" in var.name]
-        self.learn_content_operation = util.l2_loss(self.backward_thoughts, self.input, variables)
+        self.learn_content_operation = util.l2_loss(self.backward_thoughts, self.input, variables, rate=0.001)
 
         self.saver = tf.train.Saver(keep_checkpoint_every_n_hours=1)
 
-    def improve_thinking(self, pasts, session_name, max_iteration=100):
-        self.sess.run(self.pasts.initializer, feed_dict={self.pasts_initializer: pasts})
-        for step in xrange(max_iteration):
-            clist = self.sess.run(self.improve_thinking_operations)
-        print clist
-        print "-----------"
-        self.saver.save(self.sess, session_name)
-
-    def learn(self, input, pasts, session_name, max_iteration=100):
+    def learn(self, input, pasts, max_iteration=100, session_name=None):
         self.sess.run(self.input.initializer, feed_dict={self.input_initializer: input})
         self.sess.run(self.pasts.initializer, feed_dict={self.pasts_initializer: pasts})
         for step in xrange(max_iteration):
-            v_, clist = self.sess.run((self.learn_content_operation, self.learn_operations))
-        print v_
-        print clist
+            v_, m_, f_ = self.sess.run((self.learn_content_operation, self.memorize_operations, self.improve_focus_operations))
+        print "Content: ", v_
+        print "Focus: ", f_
+        print "Memory: ", m_
         print "-----------"
-        self.saver.save(self.sess, session_name)
+        if session_name is not None:
+            self.saver.save(self.sess, session_name)
 
     def generate_thought(self, pasts):
         self.sess.run(self.pasts.initializer, feed_dict={self.pasts_initializer: pasts})

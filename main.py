@@ -42,22 +42,32 @@ if __name__ == '__main__':
         for m in xrange(total_maps):
             frames = world.get_valid_data(world_size, world_size[0] / 10, map_complexity=6, length_modifier=0.2)
             machine.reset_memory()
-
-            for i in xrange(1, frames.shape[0]):
+            for i in xrange(0, frames.shape[0]):
                 pasts = util.prepare_data(frames, i - past_steps, i)
                 input_data = util.prepare_data(frames, i, i + 1)
                 print "-----------"
-                # when the generated thought is far from the example
-                machine.learn(input_data, pasts, "./artifacts/demo", 5)
-                # otherwise memorize own thought for later use
-                # machine.improve_thinking(pasts, "./artifacts/demo", 5)
+                # learn and save model
+                machine.learn(input_data, pasts, 20, "./artifacts/demo")
     else:
 
         generated_frames = []
+        frames = world.get_valid_data(world_size, world_size[0] / 10, map_complexity=6, length_modifier=0.2)
+        machine.reset_memory()
+        pasts = util.prepare_data(frames, 0 - past_steps, 0)
+        input_data = util.prepare_data(frames, 0, 0 + 1)
+
+        # Learn the target frame
+        machine.learn(input_data, pasts, 100)
+
         for i in xrange(1, frames.shape[0]):
             pasts = util.prepare_data(frames, i - past_steps, i)
             input_data = util.prepare_data(frames, i, i + 1)
-            generated_frames.append(machine.generate_thought(pasts))
+            # generate thoughts
+            gen = machine.generate_thought(pasts)
+            # and also memorize the generated thoughts, but not save
+            machine.learn(gen, pasts, 100)
+
+            generated_frames.append(gen)
 
         artifact_path = os.path.dirname(os.path.abspath(__file__)) + "/artifacts/"
         world.toGif(world.to_numpy(generated_frames, world_size), artifact_path + "sample_path.gif")

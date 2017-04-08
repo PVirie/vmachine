@@ -56,9 +56,8 @@ class Component:
         h = self.forward(input, G)
         v = self.backward(h, G)
 
-        self.learn_memory_operation = util.cross_entropy(m, h, self.get_memory_variables())
-        self.learn_focus_operation = util.cross_entropy(s, h, self.get_selective_focus_variables())
-        self.improve_thinking_operation = util.cross_entropy(s, m, self.get_selective_focus_variables())
+        self.memorize_operation = util.cross_entropy(m, h, self.get_memory_variables())
+        self.improve_focus_operation = util.cross_entropy(s, h, self.get_selective_focus_variables())
         self.reset_memory_operation = self.Mw.get_reset_operation()
 
         return u, v
@@ -72,11 +71,11 @@ class Component:
     def get_memory_variables(self):
         return tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=self.memory_scope.name)
 
-    def get_learn_operation(self):
-        return {"memory": self.learn_memory_operation, "focus": self.learn_focus_operation}
+    def get_memorize_operation(self):
+        return self.memorize_operation
 
-    def get_improve_thinking_operation(self):
-        return self.improve_thinking_operation
+    def get_improve_focus_operation(self):
+        return self.improve_focus_operation
 
     def get_reset_memory_operation(self):
         return self.reset_memory_operation

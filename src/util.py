@@ -10,15 +10,15 @@ def generate_ones(rows, cols):
     return np.ones((rows, cols), dtype=np.float32)
 
 
-def cross_entropy(y, z, variables):
+def cross_entropy(y, z, variables, rate=0.001):
     cost = tf.reduce_sum(tf.multiply(z, -tf.log(y)) + tf.multiply((1 - z), -tf.log(1 - y)))
-    training_op = tf.train.AdamOptimizer(0.001).minimize(cost, var_list=variables)
+    training_op = tf.train.AdamOptimizer(rate).minimize(cost, var_list=variables)
     return {"op": training_op, "cost": cost}
 
 
-def l2_loss(y, z, variables):
+def l2_loss(y, z, variables, rate=0.001):
     cost = tf.reduce_sum((z - y)**2)
-    training_op = tf.train.AdamOptimizer(0.001).minimize(cost, var_list=variables)
+    training_op = tf.train.AdamOptimizer(rate).minimize(cost, var_list=variables)
     return {"op": training_op, "cost": cost}
 
 

@@ -22,12 +22,12 @@ if __name__ == '__main__':
     total_maps = 5 if not args.total else args.total
 
     print "-----------------------"
-    print "world size: " + world_size
-    print "past steps: " + past_steps
-    print "components: " + components
-    print "component size: " + component_size
-    print "memory depth: " + belief_depth
-    print "total maps: " + total_maps
+    print "world size: ", world_size
+    print "past steps: ", past_steps
+    print "components: ", components
+    print "component size: ", component_size
+    print "memory depth: ", belief_depth
+    print "total maps: ", total_maps
     print "-----------------------"
 
     sess = tf.Session()
@@ -35,7 +35,6 @@ if __name__ == '__main__':
     sess.run(tf.global_variables_initializer())
 
     if not args.reset:
-        print "loading..."
         machine.load_session("./artifacts/demo")
 
     if not args.gen:

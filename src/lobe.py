@@ -12,12 +12,12 @@ class Component:
             with tf.variable_scope("content") as content_scope:
                 print content_scope.name
                 self.content_scope = content_scope
-                self.Gw = matter.Matter([total_past_steps * input_size, input_size * component_size])
+                self.Gw = matter.Matter([total_past_steps * input_size, component_size, input_size * component_size])
                 self.Ww = matter.Matter([component_size, component_size, component_size])
             with tf.variable_scope("selectivefocus")as selectivefocus_scope:
                 print selectivefocus_scope.name
                 self.selectivefocus_scope = selectivefocus_scope
-                self.Sw = matter.Matter([total_past_steps * input_size, component_size])
+                self.Sw = matter.Matter([total_past_steps * input_size, component_size, component_size])
             with tf.variable_scope("memory")as memory_scope:
                 print memory_scope.name
                 self.memory_scope = memory_scope

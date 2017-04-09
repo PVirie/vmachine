@@ -24,7 +24,7 @@ class Component:
                 self.Mw = matter.BeliefNet(component_size, depth=belief_depth)
 
     def generative_focus(self, pasts):
-        return tf.nn.softmax(tf.reshape(self.Gw.forward(pasts), [self.sizes['input_size'], self.sizes['component_size']]), 0)
+        return tf.nn.sigmoid(tf.reshape(self.Gw.forward(pasts), [self.sizes['input_size'], self.sizes['component_size']]))
 
     def selective_focus(self, pasts):
         """Focus as a part of the state"""

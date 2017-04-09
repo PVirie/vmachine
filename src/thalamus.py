@@ -30,7 +30,7 @@ class Machine:
             self.reset_memory_operations.append(self.components[i].get_reset_memory_operation())
 
         variables = [var for var in tf.global_variables() if "content" in var.name]
-        self.learn_content_operation = util.l2_loss(self.backward_thoughts, self.input, variables, rate=0.001)
+        self.learn_content_operation = util.l2_loss(self.backward_thoughts, self.input, variables, rate=0.01)
 
         self.saver = tf.train.Saver(keep_checkpoint_every_n_hours=1)
 
@@ -64,7 +64,7 @@ class Machine:
 if __name__ == '__main__':
     sess = tf.Session()
     inputs = np.where(np.random.rand(10, 100) > 0.5, np.ones((10, 100), dtype=np.float32), 0)
-    machine = Machine(sess, 100, 4, 3, 5)
+    machine = Machine(sess, 100, 4, 3, 20, 5)
     sess.run(tf.global_variables_initializer())
 
     for i in xrange(4, inputs.shape[0]):
@@ -73,6 +73,4 @@ if __name__ == '__main__':
         print machine.generate_thought(pasts)
         print "-----------"
         # when the generated thought is far from the example
-        machine.learn(input_data, pasts, "../artifacts/demo", 5)
-        # otherwise memorize own thought for later use
-        machine.improve_thinking(pasts, "../artifacts/demo", 5)
+        machine.learn(input_data, pasts, 20)

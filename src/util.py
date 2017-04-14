@@ -22,6 +22,11 @@ def l2_loss(y, z, variables, rate=0.001):
     return {"op": training_op, "cost": cost}
 
 
+def apply_gradients(gradients, delta, rate=0.001):
+    training_op = tf.train.AdamOptimizer(rate).apply_gradients(gradients)
+    return {"op": training_op, "cost": delta}
+
+
 def prepare_data(data, first, last_not_included):
     # data are of shape [len, ...]
     if first < 0:

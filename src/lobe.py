@@ -14,7 +14,7 @@ class Component:
                 self.content_scope = content_scope
                 self.Gw = matter.Matter([total_past_steps * input_size, component_size, input_size * component_size])
                 self.Ww = matter.Matter([component_size, component_size, component_size])
-            with tf.variable_scope("selectivefocus")as selectivefocus_scope:
+            with tf.variable_scope("selectivefocus") as selectivefocus_scope:
                 print selectivefocus_scope.name
                 self.selectivefocus_scope = selectivefocus_scope
                 self.Sw = matter.Matter([total_past_steps * input_size, component_size, component_size])
@@ -49,14 +49,15 @@ class Component:
         """s -> h; only when receiving an external input"""
         """s -> m; when perform thinking"""
         s = self.selective_focus(pasts)
-        m = self.retrieve_memory(s)
         G = self.generative_focus(pasts)
-        u = self.backward(m, G)
-
         h = self.forward(input, G)
         v = self.backward(h, G)
 
-        self.memorize_operation = util.cross_entropy(m, h, self.get_memory_variables())
+        m = self.retrieve_memory(s)
+        u = self.backward(m, G)
+
+        grads, delta = self.Mw.gradients(h)
+        self.memorize_operation = util.apply_gradients(grads, delta, 0.01)
         self.improve_focus_operation = util.cross_entropy(s, h, self.get_selective_focus_variables())
         self.reset_memory_operation = self.Mw.get_reset_operation()
 

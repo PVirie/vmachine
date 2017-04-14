@@ -24,12 +24,13 @@ class Machine:
             self.components.append(lobe.Component(component_size, input_size, total_pasts, belief_depth, "C" + str(i)))
             u, v = self.components[i].build_graphs(self.input, tf.reshape(self.pasts, [-1, total_pasts * input_size]))
             self.generated_thoughts = self.generated_thoughts + u
-            self.backward_thoughts = self.backward_thoughts + v
+            self.backward_thoughts = self.backward_thoughts + u
             self.improve_focus_operations.append(self.components[i].get_improve_focus_operation())
             self.memorize_operations.append(self.components[i].get_memorize_operation())
             self.reset_memory_operations.append(self.components[i].get_reset_memory_operation())
 
         variables = [var for var in tf.global_variables() if "content" in var.name]
+        # print [var.name for var in variables]
         self.learn_content_operation = util.l2_loss(self.backward_thoughts, self.input, variables, rate=0.01)
 
         self.saver = tf.train.Saver(keep_checkpoint_every_n_hours=1)

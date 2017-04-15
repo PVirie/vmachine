@@ -41,7 +41,7 @@ class Component:
         x = self.Ww.backward(h)
         return tf.matmul(x, G, transpose_b=True)
 
-    def build_graphs(self, input, pasts):
+    def build_graphs(self, input, pasts, time):
         """component content h, selective focus s, memory m"""
         """return generated thought u, generated content v"""
         """v -> input; only when receiving an external input"""

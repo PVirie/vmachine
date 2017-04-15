@@ -5,7 +5,7 @@ import util
 
 class Matter:
 
-    def __init__(self, layers, activation=tf.sigmoid, rbm=False):
+    def __init__(self, layers, activation=tf.sigmoid):
         self.f = activation
         self.Ws = []
         self.Bs = []
@@ -13,6 +13,13 @@ class Matter:
         for i in xrange(1, len(layers)):
             self.Ws.append(tf.Variable(util.random_uniform(layers[i - 1], layers[i]), dtype=tf.float32))
             self.Bs.append(tf.Variable(np.zeros((layers[i])), dtype=tf.float32))
+
+        self.reset_ops = []
+        ops = []
+        for i in xrange(1, len(layers)):
+            ops.append(tf.assign(self.Ws[i - 1], util.random_uniform(layers[i - 1], layers[i])))
+            ops.append(tf.assign(self.Bs[i - 1], np.zeros((layers[i]))))
+        ops.append(tf.assign(self.input_bias, np.zeros((layers[0]))))
 
     def forward(self, input):
         output = input
@@ -26,6 +33,9 @@ class Matter:
             input = self.f(tf.matmul(input, self.Ws[i], transpose_b=True) + self.Bs[i - 1])
         return self.f(tf.matmul(input, self.Ws[0], transpose_b=True) + self.input_bias)
 
+    def get_reset_operation(self):
+        return self.reset_ops
+
 
 class BeliefNet:
 
@@ -36,6 +46,11 @@ class BeliefNet:
         self.W = tf.Variable(util.random_uniform(self.unit_size, self.unit_size), dtype=tf.float32)
         self.B = tf.Variable(np.zeros((self.unit_size)), dtype=tf.float32)
         self.input_bias = tf.Variable(np.zeros((unit_size)), dtype=tf.float32)
+
+        self.reset_ops = []
+        self.reset_ops.append(tf.assign(self.W, util.random_uniform(self.unit_size, self.unit_size)))
+        self.reset_ops.append(tf.assign(self.B, np.zeros((self.unit_size))))
+        self.reset_ops.append(tf.assign(self.input_bias, np.zeros((self.unit_size))))
 
     def forward(self, input):
         output = input
@@ -55,13 +70,13 @@ class BeliefNet:
         h_ = self.f(tf.matmul(v_, self.W) + self.B)
 
         grads.append((- tf.matmul(v, h, transpose_a=True) + tf.matmul(v_, h_, transpose_a=True), self.W))
-        grads.append((- tf.reduce_sum(h, 0) + tf.reduce_sum(h_, 0), self.B))
-        grads.append((- tf.reduce_sum(v, 0) + tf.reduce_sum(v_, 0), self.input_bias))
+        # grads.append((- tf.reduce_sum(h, 0) + tf.reduce_sum(h_, 0), self.B))
+        # grads.append((- tf.reduce_sum(v, 0) + tf.reduce_sum(v_, 0), self.input_bias))
 
         return grads, tf.reduce_sum((v - v_)**2)
 
     def get_reset_operation(self):
-        return (tf.assign(self.W, util.random_uniform(self.unit_size, self.unit_size)), tf.assign(self.B, np.zeros((self.unit_size))))
+        return self.reset_ops
 
     def get_weights(self):
         return self.W, self.B

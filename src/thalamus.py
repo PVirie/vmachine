@@ -2,6 +2,7 @@ import tensorflow as tf
 import numpy as np
 import util
 import lobe
+import temporal_lobe
 
 
 class Machine:
@@ -10,9 +11,11 @@ class Machine:
         self.sess = sess
         self.input_initializer = tf.placeholder(tf.float32, [1, input_size])
         self.pasts_initializer = tf.placeholder(tf.float32, [total_pasts, input_size])
+        self.time_initializer = tf.placeholder(tf.float32, ())
 
         self.input = tf.Variable(self.input_initializer, trainable=False, collections=[])
         self.pasts = tf.Variable(self.pasts_initializer, trainable=False, collections=[])
+        self.time = tf.Variable(self.time_initializer, trainable=False, collections=[])
 
         self.generated_thoughts = tf.zeros([1, input_size], dtype=tf.float32)
         self.backward_thoughts = tf.zeros([1, input_size], dtype=tf.float32)
@@ -20,9 +23,13 @@ class Machine:
         self.memorize_operations = []
         self.reset_memory_operations = []
         self.components = []
-        for i in xrange(num_components):
+
+        self.components.append(temporal_lobe.Temporal_Component(component_size, input_size, total_pasts, 3, "C"))
+        for i in xrange(1, num_components):
             self.components.append(lobe.Component(component_size, input_size, total_pasts, belief_depth, "C" + str(i)))
-            u, v = self.components[i].build_graphs(self.input, tf.reshape(self.pasts, [-1, total_pasts * input_size]))
+
+        for i in xrange(num_components):
+            u, v = self.components[i].build_graphs(self.input, tf.reshape(self.pasts, [-1, total_pasts * input_size]), self.time)
             self.generated_thoughts = self.generated_thoughts + u
             self.backward_thoughts = self.backward_thoughts + u
             self.improve_focus_operations.append(self.components[i].get_improve_focus_operation())
@@ -35,9 +42,10 @@ class Machine:
 
         self.saver = tf.train.Saver(keep_checkpoint_every_n_hours=1)
 
-    def learn(self, input, pasts, max_iteration=100, session_name=None):
+    def learn(self, input, pasts, time, max_iteration=100, session_name=None):
         self.sess.run(self.input.initializer, feed_dict={self.input_initializer: input})
         self.sess.run(self.pasts.initializer, feed_dict={self.pasts_initializer: pasts})
+        self.sess.run(self.time.initializer, feed_dict={self.time_initializer: time})
         for step in xrange(max_iteration):
             v_, m_, f_ = self.sess.run((self.learn_content_operation, self.memorize_operations, self.improve_focus_operations))
         print "Content: ", v_
@@ -47,8 +55,9 @@ class Machine:
         if session_name is not None:
             self.saver.save(self.sess, session_name)
 
-    def generate_thought(self, pasts):
+    def generate_thought(self, pasts, time):
         self.sess.run(self.pasts.initializer, feed_dict={self.pasts_initializer: pasts})
+        self.sess.run(self.time.initializer, feed_dict={self.time_initializer: time})
         return self.sess.run(self.generated_thoughts)
 
     def reset_memory(self):
@@ -71,7 +80,7 @@ if __name__ == '__main__':
     for i in xrange(4, inputs.shape[0]):
         pasts = inputs[i - 4:i, :]
         input_data = inputs[i:i + 1, :]
-        print machine.generate_thought(pasts)
+        print machine.generate_thought(pasts, i)
         print "-----------"
         # when the generated thought is far from the example
-        machine.learn(input_data, pasts, 20)
+        machine.learn(input_data, pasts, i, 20)

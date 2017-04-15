@@ -47,7 +47,7 @@ if __name__ == '__main__':
                 input_data = util.prepare_data(frames, i, i + 1)
                 print "-----------"
                 # learn and save model
-                machine.learn(input_data, pasts, 20, "./artifacts/demo")
+                machine.learn(input_data, pasts, i, 20, "./artifacts/demo")
     else:
 
         generated_frames = []
@@ -57,15 +57,15 @@ if __name__ == '__main__':
         input_data = util.prepare_data(frames, 0, 0 + 1)
 
         # Learn the target frame
-        machine.learn(input_data, pasts, 100)
+        machine.learn(input_data, pasts, 0, 100)
 
         for i in xrange(1, frames.shape[0]):
             pasts = util.prepare_data(frames, i - past_steps, i)
             input_data = util.prepare_data(frames, i, i + 1)
             # generate thoughts
-            gen = machine.generate_thought(pasts)
+            gen = machine.generate_thought(pasts, i)
             # and also memorize the generated thoughts, but not save
-            machine.learn(gen, pasts, 100)
+            machine.learn(gen, pasts, i, 100)
 
             generated_frames.append(gen)
 

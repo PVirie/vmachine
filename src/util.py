@@ -27,6 +27,12 @@ def apply_gradients(gradients, delta, rate=0.001):
     return {"op": training_op, "cost": delta}
 
 
+def random_binomial(p):
+    ones = tf.ones(tf.shape(p), dtype=tf.float32)
+    zeros = tf.zeros(tf.shape(p), dtype=tf.float32)
+    return tf.where(tf.random_uniform(tf.shape(p), 0, 1, dtype=tf.float32) < p, ones, zeros)
+
+
 def prepare_data(data, first, last_not_included):
     # data are of shape [len, ...]
     if first < 0:

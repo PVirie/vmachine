@@ -1,5 +1,6 @@
 import tensorflow as tf
 import matter
+import hippocampus
 import util
 import lobe
 import numpy as np
@@ -24,7 +25,7 @@ class Temporal_Component(lobe.Component):
             with tf.variable_scope("memory")as memory_scope:
                 print memory_scope.name
                 self.memory_scope = memory_scope
-                self.Mw = matter.BeliefNet(component_size + self.temporal_memory_size, depth=belief_depth)
+                self.Mw = hippocampus.BeliefNet(component_size + self.temporal_memory_size, depth=belief_depth)
 
     def update_counter(self, time):
         return tf.ones([1, self.temporal_memory_size], dtype=tf.float32) * time

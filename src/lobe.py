@@ -1,5 +1,6 @@
 import tensorflow as tf
 import matter
+import hippocampus
 import util
 
 
@@ -21,7 +22,7 @@ class Component:
             with tf.variable_scope("memory")as memory_scope:
                 print memory_scope.name
                 self.memory_scope = memory_scope
-                self.Mw = matter.BeliefNet(component_size, depth=belief_depth)
+                self.Mw = hippocampus.BeliefNet(component_size, depth=belief_depth)
 
     def generative_focus(self, pasts):
         return tf.nn.sigmoid(tf.reshape(self.Gw.forward(pasts), [self.sizes['input_size'], self.sizes['component_size']]))

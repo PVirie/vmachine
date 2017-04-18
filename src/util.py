@@ -6,10 +6,6 @@ def random_uniform(rows, cols):
     return (np.random.rand(rows, cols) - 0.5) * 0.001
 
 
-def generate_ones(rows, cols):
-    return np.ones((rows, cols), dtype=np.float32)
-
-
 def cross_entropy(y, z, variables, rate=0.001):
     cost = tf.reduce_sum(tf.multiply(z, -tf.log(y)) + tf.multiply((1 - z), -tf.log(1 - y)))
     training_op = tf.train.AdamOptimizer(rate).minimize(cost, var_list=variables)
@@ -27,10 +23,14 @@ def apply_gradients(gradients, delta, rate=0.001):
     return {"op": training_op, "cost": delta}
 
 
-def random_binomial(p):
-    ones = tf.ones(tf.shape(p), dtype=tf.float32)
-    zeros = tf.zeros(tf.shape(p), dtype=tf.float32)
-    return tf.where(tf.random_uniform(tf.shape(p), 0, 1, dtype=tf.float32) < p, ones, zeros)
+def tf_ones_or_zeros(c):
+    ones = tf.ones(tf.shape(c), dtype=tf.float32)
+    zeros = tf.zeros(tf.shape(c), dtype=tf.float32)
+    return tf.where(c, ones, zeros)
+
+
+def tf_random_binomial(p):
+    return tf_ones_or_zeros(tf.random_uniform(tf.shape(p), 0, 1, dtype=tf.float32) < p)
 
 
 def prepare_data(data, first, last_not_included):

@@ -37,75 +37,7 @@ class Matter:
         return self.reset_ops
 
 
-class BeliefNet:
-
-    def __init__(self, unit_size, activation=tf.sigmoid, depth=20):
-        self.depth = depth
-        self.f = activation
-        self.unit_size = unit_size
-        self.W = tf.Variable(util.random_uniform(self.unit_size, self.unit_size), dtype=tf.float32)
-        self.B = tf.Variable(np.zeros((self.unit_size)), dtype=tf.float32)
-        self.input_bias = tf.Variable(np.zeros((unit_size)), dtype=tf.float32)
-
-        self.reset_ops = []
-        self.reset_ops.append(tf.assign(self.W, util.random_uniform(self.unit_size, self.unit_size)))
-        self.reset_ops.append(tf.assign(self.B, np.zeros((self.unit_size))))
-        self.reset_ops.append(tf.assign(self.input_bias, np.zeros((self.unit_size))))
-
-    def forward(self, input):
-        output = input
-        for i in xrange(0, self.depth):
-            h = self.f(tf.matmul(output, self.W) + self.B)
-            output = self.f(tf.matmul(h, self.W, transpose_b=True) + self.input_bias)
-        return output
-
-    def gradients(self, input):
-
-        grads = []
-
-        v = input
-        h = self.f(tf.matmul(v, self.W) + self.B)
-
-        v_ = self.forward(input)
-        h_ = self.f(tf.matmul(v_, self.W) + self.B)
-
-        grads.append((- tf.matmul(v, h, transpose_a=True) + tf.matmul(v_, h_, transpose_a=True), self.W))
-        # grads.append((- tf.reduce_sum(h, 0) + tf.reduce_sum(h_, 0), self.B))
-        # grads.append((- tf.reduce_sum(v, 0) + tf.reduce_sum(v_, 0), self.input_bias))
-
-        return grads, tf.reduce_sum((v - v_)**2)
-
-    def get_reset_operation(self):
-        return self.reset_ops
-
-    def get_weights(self):
-        return self.W, self.B
-
-
 if __name__ == '__main__':
     sess = tf.Session()
 
     input_size = 100
-
-    bnet = BeliefNet(input_size, tf.sigmoid, depth=10)
-
-    inputs = []
-    outputs = []
-    ops = []
-    for i in xrange(10):
-        input = tf.constant(np.random.rand(1, input_size), dtype=tf.float32)
-        inputs.append(input)
-        outputs.append(bnet.forward(input))
-        grads, delta = bnet.gradients(input)
-        ops.append(util.apply_gradients(grads, delta, 0.01))
-
-    sess.run(tf.global_variables_initializer())
-
-    for i in xrange(10):
-        for j in xrange(1000):
-            print sess.run(ops[i])
-
-    # sess.run(bnet.get_reset_operation())
-
-    for i in xrange(10):
-        print sess.run(tf.reduce_sum(tf.squared_difference(outputs[i], inputs[i])))

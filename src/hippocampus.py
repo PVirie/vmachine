@@ -12,10 +12,8 @@ def build_cpu_shift_mat(size):
 
 class BeliefNet:
 
-    def __init__(self, unit_size, activation=tf.sigmoid, keep_prob=0.01):
-        self.f = activation
+    def __init__(self, unit_size):
         self.unit_size = unit_size
-        self.keep_prob = keep_prob
         self.W = tf.Variable(util.random_uniform(unit_size, unit_size), dtype=tf.float32)
 
         s = np.zeros((1, unit_size), dtype=np.float32)
@@ -60,14 +58,14 @@ if __name__ == '__main__':
 
     input_size = 100
 
-    bnet = BeliefNet(input_size, tf.sigmoid)
+    bnet = BeliefNet(input_size)
 
     inputs = []
     outputs = []
     ops = []
     for i in xrange(10):
         input = tf.constant(np.random.rand(1, input_size), dtype=tf.float32)
-        output = bnet.backward(bnet.forward(tf.nn.dropout(input, 0.2)))
+        output = bnet.backward(bnet.forward(tf.nn.dropout(input, 0.5)))
         grads, delta = bnet.gradients(input)
         # this memory learning rate can be huge (convex).
         ops.append(util.apply_gradients(grads, delta, 1.0))

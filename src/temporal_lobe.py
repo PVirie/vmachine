@@ -3,7 +3,6 @@ import matter
 import hippocampus
 import util
 import lobe
-import numpy as np
 
 
 class Temporal_Component(lobe.Component):

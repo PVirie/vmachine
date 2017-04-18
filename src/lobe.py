@@ -22,7 +22,7 @@ class Component:
             with tf.variable_scope("memory")as memory_scope:
                 print memory_scope.name
                 self.memory_scope = memory_scope
-                self.Mw = hippocampus.BeliefNet(component_size, depth=belief_depth)
+                self.Mw = hippocampus.BeliefNet(component_size)
 
     def generative_focus(self, pasts):
         return tf.nn.sigmoid(tf.reshape(self.Gw.forward(pasts), [self.sizes['input_size'], self.sizes['component_size']]))
@@ -32,7 +32,7 @@ class Component:
         return self.Sw.forward(pasts)
 
     def retrieve_memory(self, s):
-        return self.Mw.forward(s)
+        return self.Mw.backward(self.Mw.forward(s))
 
     def forward(self, v, G):
         x = tf.matmul(v, G)
@@ -58,9 +58,10 @@ class Component:
         u = self.backward(m, G)
 
         grads, delta = self.Mw.gradients(h)
-        self.memorize_operation = util.apply_gradients(grads, delta, 0.01)
+        self.memorize_operation = util.apply_gradients(grads, delta, 1.0)
         self.improve_focus_operation = util.cross_entropy(s, h, self.get_selective_focus_variables())
         self.reset_memory_operation = self.Mw.get_reset_operation()
+        self.reseed_memory_operation = self.Mw.get_reseed_operation()
 
         return u, v
 
@@ -81,3 +82,6 @@ class Component:
 
     def get_reset_memory_operation(self):
         return self.reset_memory_operation
+
+    def get_reseed_memory_operation(self):
+        return self.reseed_memory_operation

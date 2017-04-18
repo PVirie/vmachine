@@ -67,15 +67,17 @@ if __name__ == '__main__':
     ops = []
     for i in xrange(10):
         input = tf.constant(np.random.rand(1, input_size), dtype=tf.float32)
-        output = bnet.backward(bnet.forward(input))
+        output = bnet.backward(bnet.forward(tf.nn.dropout(input, 0.2)))
+        grads, delta = bnet.gradients(input)
+        # this memory learning rate can be huge (convex).
+        ops.append(util.apply_gradients(grads, delta, 1.0))
         inputs.append(input)
         outputs.append(output)
-        grads, delta = bnet.gradients(input)
-        ops.append(util.apply_gradients(grads, delta, 1.0))
 
     sess.run(tf.global_variables_initializer())
 
     for i in xrange(10):
+        # shift memory anchor
         print sess.run(bnet.get_reseed_operation())
         for j in xrange(100):
             print sess.run(ops[i])

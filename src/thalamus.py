@@ -22,6 +22,7 @@ class Machine:
         self.improve_focus_operations = []
         self.memorize_operations = []
         self.reset_memory_operations = []
+        self.reseed_memory_operations = []
         self.components = []
 
         self.components.append(temporal_lobe.Temporal_Component(component_size, input_size, total_pasts, 3, "C"))
@@ -35,6 +36,7 @@ class Machine:
             self.improve_focus_operations.append(self.components[i].get_improve_focus_operation())
             self.memorize_operations.append(self.components[i].get_memorize_operation())
             self.reset_memory_operations.append(self.components[i].get_reset_memory_operation())
+            self.reseed_memory_operations.append(self.components[i].get_reseed_memory_operation())
 
         variables = [var for var in tf.global_variables() if "content" in var.name]
         # print [var.name for var in variables]
@@ -43,9 +45,8 @@ class Machine:
         self.saver = tf.train.Saver(keep_checkpoint_every_n_hours=1)
 
     def learn(self, input, pasts, time, max_iteration=100, session_name=None):
-        self.sess.run(self.input.initializer, feed_dict={self.input_initializer: input})
-        self.sess.run(self.pasts.initializer, feed_dict={self.pasts_initializer: pasts})
-        self.sess.run(self.time.initializer, feed_dict={self.time_initializer: time})
+        self.sess.run((self.reseed_memory_operations, self.input.initializer, self.pasts.initializer, self.time.initializer),
+                      feed_dict={self.input_initializer: input, self.pasts_initializer: pasts, self.time_initializer: time})
         for step in xrange(max_iteration):
             v_, m_, f_ = self.sess.run((self.learn_content_operation, self.memorize_operations, self.improve_focus_operations))
         print "Content: ", v_
@@ -56,8 +57,8 @@ class Machine:
             self.saver.save(self.sess, session_name)
 
     def generate_thought(self, pasts, time):
-        self.sess.run(self.pasts.initializer, feed_dict={self.pasts_initializer: pasts})
-        self.sess.run(self.time.initializer, feed_dict={self.time_initializer: time})
+        self.sess.run((self.pasts.initializer, self.time.initializer),
+                      feed_dict={self.pasts_initializer: pasts, self.time_initializer: time})
         return self.sess.run(self.generated_thoughts)
 
     def reset_memory(self):

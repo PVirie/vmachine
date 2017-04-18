@@ -25,7 +25,7 @@ class Temporal_Component(lobe.Component):
             with tf.variable_scope("memory")as memory_scope:
                 print memory_scope.name
                 self.memory_scope = memory_scope
-                self.Mw = hippocampus.BeliefNet(component_size + self.temporal_memory_size, depth=belief_depth)
+                self.Mw = hippocampus.BeliefNet(component_size + self.temporal_memory_size)
 
     def update_counter(self, time):
         return tf.ones([1, self.temporal_memory_size], dtype=tf.float32) * time
@@ -33,12 +33,12 @@ class Temporal_Component(lobe.Component):
     # not a true conditional query, should use conditional belief net instead.
     def retrieve_memory(self, s):
         query = tf.concat([tf.zeros([1, self.sizes['component_size']], dtype=tf.float32), s], 1)
-        return tf.slice(self.Mw.forward(query), [0, 0], [-1, self.sizes['component_size']])
+        return tf.slice(lobe.Component.retrieve_memory(self, query), [0, 0], [-1, self.sizes['component_size']])
 
     # not a true conditional query, should use conditional belief net instead.
     def retrieve_time(self, h):
         query = tf.concat([h, tf.zeros([1, self.temporal_memory_size], dtype=tf.float32)], 1)
-        return tf.slice(self.Mw.forward(query), [0, self.sizes['component_size']], [-1, -1])
+        return tf.slice(lobe.Component.retrieve_memory(self, query), [0, self.sizes['component_size']], [-1, -1])
 
     def build_graphs(self, input, pasts, time):
 
@@ -53,9 +53,10 @@ class Temporal_Component(lobe.Component):
 
         # memorize the new memory,time tuple
         grads, delta = self.Mw.gradients(tf.concat([h, self.update_counter(time)], 1))
-        self.memorize_operation = util.apply_gradients(grads, delta, 0.01)
+        self.memorize_operation = util.apply_gradients(grads, delta, 1.0)
         # tie the focus to best time
         self.improve_focus_operation = util.cross_entropy(s, t, self.get_selective_focus_variables())
         self.reset_memory_operation = self.Mw.get_reset_operation()
+        self.reseed_memory_operation = self.Mw.get_reseed_operation()
 
         return u, v

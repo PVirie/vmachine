@@ -3,41 +3,48 @@ import numpy as np
 import util
 
 
+def build_cpu_shift_mat(size):
+    r12340 = np.arange(1, size + 1, 1, dtype=np.int32)
+    r12340[size - 1] = 0
+    cpu_shift = np.identity(size)[:, r12340]
+    return cpu_shift
+
+
 class BeliefNet:
 
-    def __init__(self, unit_size, activation=tf.sigmoid, keep_prob=0.05):
+    def __init__(self, unit_size, activation=tf.sigmoid, keep_prob=0.01):
         self.f = activation
         self.unit_size = unit_size
         self.keep_prob = keep_prob
-        self.W = tf.Variable(np.zeros((self.unit_size, self.unit_size), dtype=np.float32), dtype=tf.float32)
+        self.W = tf.Variable(util.random_uniform(unit_size, unit_size), dtype=tf.float32)
 
-        self.seed = tf.Variable(np.zeros((1, self.unit_size), dtype=np.float32), dtype=tf.float32)
+        s = np.zeros((1, unit_size), dtype=np.float32)
+        s[0, 0] = 1
+        shifter = tf.constant(build_cpu_shift_mat(unit_size), dtype=tf.float32)
+        self.seed = tf.Variable(s, dtype=tf.float32)
+        self.reseed_ops = tf.assign(self.seed, tf.matmul(self.seed, shifter))
 
         self.reset_ops = []
-        self.reset_ops.append(tf.assign(self.W, np.zeros((self.unit_size, self.unit_size), dtype=np.float32)))
-
-        self.reseed_ops = tf.assign(self.seed, util.tf_random_binomial(tf.ones([1, self.unit_size]) * keep_prob))
+        self.reset_ops.append(tf.assign(self.W, util.random_uniform(unit_size, unit_size)))
 
     def forward(self, input):
-        h = tf.sigmoid(tf.matmul(input, self.W))
-        h_ = util.tf_ones_or_zeros(h >= tf.reduce_max(h, 1, keep_dims=True))
-        output = self.backward(h_)
-        return output
+        h = tf.matmul(input, self.W)
+        h_ = tf.nn.softmax(h, dim=-1)
+        return h_
 
     def backward(self, h):
         v_ = tf.matmul(h, self.W, transpose_b=True)
-        return v_ / tf.reduce_sum(h, 1, keep_dims=True)
+        return v_
 
     def gradients(self, input):
 
         grads = []
 
-        h = tf.tile(self.seed, [tf.shape(input)[0], 1])
-
         v = input
+        h = tf.tile(self.seed, [tf.shape(input)[0], 1])
         v_ = self.backward(h)
 
-        grads.append((- tf.matmul(v, h, transpose_a=True) + tf.matmul(v_, h, transpose_a=True), self.W))
+        grads.append((tf.matmul(-v + v_, h, transpose_a=True), self.W))
 
         return grads, tf.reduce_sum((v - v_)**2)
 
@@ -59,11 +66,12 @@ if __name__ == '__main__':
     outputs = []
     ops = []
     for i in xrange(10):
-        input = util.tf_random_binomial(tf.constant(np.random.rand(1, input_size), dtype=tf.float32))
+        input = tf.constant(np.random.rand(1, input_size), dtype=tf.float32)
+        output = bnet.backward(bnet.forward(input))
         inputs.append(input)
-        outputs.append(bnet.forward(input))
+        outputs.append(output)
         grads, delta = bnet.gradients(input)
-        ops.append(util.apply_gradients(grads, delta, 0.01))
+        ops.append(util.apply_gradients(grads, delta, 1.0))
 
     sess.run(tf.global_variables_initializer())
 

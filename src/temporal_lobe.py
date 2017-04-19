@@ -3,13 +3,20 @@ import matter
 import hippocampus
 import util
 import lobe
+import numpy as np
 
 
 class Temporal_Component(lobe.Component):
 
     def __init__(self, component_size, input_size, total_past_steps, belief_depth, scope_name):
         self.sizes = {'input_size': input_size, 'component_size': component_size, 'scope_name': scope_name}
-        self.temporal_memory_size = 10
+        self.temporal_memory_size = 20
+
+        s = np.zeros((1, self.temporal_memory_size), dtype=np.float32)
+        s[0, 0] = 1
+        shifter = tf.constant(util.build_cpu_shift_mat(self.temporal_memory_size), dtype=tf.float32)
+        self.time = tf.Variable(s, dtype=tf.float32)
+        self.retime_ops = tf.assign(self.time, tf.matmul(self.time, shifter))
 
         with tf.variable_scope(scope_name):
             with tf.variable_scope("content") as content_scope:
@@ -26,9 +33,6 @@ class Temporal_Component(lobe.Component):
                 self.memory_scope = memory_scope
                 self.Mw = hippocampus.BeliefNet(component_size + self.temporal_memory_size)
 
-    def update_counter(self, time):
-        return tf.ones([1, self.temporal_memory_size], dtype=tf.float32) * time
-
     # not a true conditional query, should use conditional belief net instead.
     def retrieve_memory(self, s):
         query = tf.concat([tf.zeros([1, self.sizes['component_size']], dtype=tf.float32), s], 1)
@@ -39,7 +43,7 @@ class Temporal_Component(lobe.Component):
         query = tf.concat([h, tf.zeros([1, self.temporal_memory_size], dtype=tf.float32)], 1)
         return tf.slice(lobe.Component.retrieve_memory(self, query), [0, self.sizes['component_size']], [-1, -1])
 
-    def build_graphs(self, input, pasts, time):
+    def build_graphs(self, input, pasts):
 
         s = self.selective_focus(pasts)
         G = self.generative_focus(pasts)
@@ -51,11 +55,12 @@ class Temporal_Component(lobe.Component):
         u = self.backward(m, G)
 
         # memorize the new memory,time tuple
-        grads, delta = self.Mw.gradients(tf.concat([h, self.update_counter(time)], 1))
+        grads, delta = self.Mw.gradients(tf.concat([h, self.time], 1))
         self.memorize_operation = util.apply_gradients(grads, delta, 1.0)
         # tie the focus to best time
         self.improve_focus_operation = util.cross_entropy(s, t, self.get_selective_focus_variables())
         self.reset_memory_operation = self.Mw.get_reset_operation()
-        self.reseed_memory_operation = self.Mw.get_reseed_operation()
+        # start a new session by calling this:
+        self.reseed_memory_operation = (self.Mw.get_reseed_operation(), self.retime_ops)
 
         return u, v

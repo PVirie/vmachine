@@ -11,11 +11,9 @@ class Machine:
         self.sess = sess
         self.input_initializer = tf.placeholder(tf.float32, [1, input_size])
         self.pasts_initializer = tf.placeholder(tf.float32, [total_pasts, input_size])
-        self.time_initializer = tf.placeholder(tf.float32, ())
 
         self.input = tf.Variable(self.input_initializer, trainable=False, collections=[])
         self.pasts = tf.Variable(self.pasts_initializer, trainable=False, collections=[])
-        self.time = tf.Variable(self.time_initializer, trainable=False, collections=[])
 
         self.generated_thoughts = tf.zeros([1, input_size], dtype=tf.float32)
         self.backward_thoughts = tf.zeros([1, input_size], dtype=tf.float32)
@@ -30,7 +28,7 @@ class Machine:
             self.components.append(lobe.Component(component_size, input_size, total_pasts, belief_depth, "C" + str(i)))
 
         for i in xrange(num_components):
-            u, v = self.components[i].build_graphs(self.input, tf.reshape(self.pasts, [-1, total_pasts * input_size]), self.time)
+            u, v = self.components[i].build_graphs(self.input, tf.reshape(self.pasts, [-1, total_pasts * input_size]))
             self.generated_thoughts = self.generated_thoughts + u
             self.backward_thoughts = self.backward_thoughts + u
             self.improve_focus_operations.append(self.components[i].get_improve_focus_operation())
@@ -44,9 +42,9 @@ class Machine:
 
         self.saver = tf.train.Saver(keep_checkpoint_every_n_hours=1)
 
-    def learn(self, input, pasts, time, max_iteration=100, session_name=None):
-        self.sess.run((self.reseed_memory_operations, self.input.initializer, self.pasts.initializer, self.time.initializer),
-                      feed_dict={self.input_initializer: input, self.pasts_initializer: pasts, self.time_initializer: time})
+    def learn(self, input, pasts, max_iteration=100, session_name=None):
+        self.sess.run((self.reseed_memory_operations, self.input.initializer, self.pasts.initializer),
+                      feed_dict={self.input_initializer: input, self.pasts_initializer: pasts})
         for step in xrange(max_iteration):
             v_, m_, f_ = self.sess.run((self.learn_content_operation, self.memorize_operations, self.improve_focus_operations))
         print "Content: ", v_
@@ -56,9 +54,9 @@ class Machine:
         if session_name is not None:
             self.saver.save(self.sess, session_name)
 
-    def generate_thought(self, pasts, time):
-        self.sess.run((self.pasts.initializer, self.time.initializer),
-                      feed_dict={self.pasts_initializer: pasts, self.time_initializer: time})
+    def generate_thought(self, pasts):
+        self.sess.run((self.pasts.initializer),
+                      feed_dict={self.pasts_initializer: pasts})
         return self.sess.run(self.generated_thoughts)
 
     def reset_memory(self):
@@ -81,7 +79,7 @@ if __name__ == '__main__':
     for i in xrange(4, inputs.shape[0]):
         pasts = inputs[i - 4:i, :]
         input_data = inputs[i:i + 1, :]
-        print machine.generate_thought(pasts, i)
+        print machine.generate_thought(pasts)
         print "-----------"
         # when the generated thought is far from the example
-        machine.learn(input_data, pasts, i, 20)
+        machine.learn(input_data, pasts, 20)

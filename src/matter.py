@@ -42,16 +42,16 @@ if __name__ == '__main__':
 
     input_size = 100
 
-    matter = Matter([input_size, input_size, input_size])
+    matter = Matter([input_size, input_size, input_size], tf.nn.elu)
 
     gens = []
     outputs = []
     ops = []
     for i in xrange(10):
         input = tf.constant(np.random.rand(1, input_size), dtype=tf.float32)
-        output = tf.constant(np.random.rand(1, input_size), dtype=tf.float32)
+        output = tf.reshape(tf.one_hot(i, input_size, 1.0, 0.0, axis=-1, dtype=tf.float32), [1, -1])
         gen = matter.forward(input)
-        ops.append(util.l2_loss(gen, output, tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES), 0.01))
+        ops.append(util.l2_loss(gen, output, tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES), 0.001))
         outputs.append(output)
         gens.append(gen)
 
@@ -59,7 +59,7 @@ if __name__ == '__main__':
 
     for i in xrange(10):
         # print sess.run(bnet.get_reseed_operation())
-        for j in xrange(200):
+        for j in xrange(100):
             print sess.run(ops[i])
 
     for i in xrange(10):

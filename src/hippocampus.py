@@ -3,13 +3,6 @@ import numpy as np
 import util
 
 
-def build_cpu_shift_mat(size):
-    r12340 = np.arange(1, size + 1, 1, dtype=np.int32)
-    r12340[size - 1] = 0
-    cpu_shift = np.identity(size)[:, r12340]
-    return cpu_shift
-
-
 class BeliefNet:
 
     def __init__(self, unit_size):
@@ -18,7 +11,7 @@ class BeliefNet:
 
         s = np.zeros((1, unit_size), dtype=np.float32)
         s[0, 0] = 1
-        shifter = tf.constant(build_cpu_shift_mat(unit_size), dtype=tf.float32)
+        shifter = tf.constant(util.build_cpu_shift_mat(unit_size), dtype=tf.float32)
         self.seed = tf.Variable(s, dtype=tf.float32)
         self.reseed_ops = tf.assign(self.seed, tf.matmul(self.seed, shifter))
 

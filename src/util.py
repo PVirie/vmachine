@@ -6,6 +6,13 @@ def random_uniform(rows, cols):
     return (np.random.rand(rows, cols) - 0.5) * 0.001
 
 
+def build_cpu_shift_mat(size):
+    r12340 = np.arange(1, size + 1, 1, dtype=np.int32)
+    r12340[size - 1] = 0
+    cpu_shift = np.identity(size)[:, r12340]
+    return cpu_shift
+
+
 def cross_entropy(y, z, variables, rate=0.001):
     cost = tf.reduce_sum(tf.multiply(z, -tf.log(y)) + tf.multiply((1 - z), -tf.log(1 - y)))
     training_op = tf.train.AdamOptimizer(rate).minimize(cost, var_list=variables)

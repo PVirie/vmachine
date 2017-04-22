@@ -43,7 +43,7 @@ class Machine:
         self.saver = tf.train.Saver(keep_checkpoint_every_n_hours=1)
 
     def learn(self, input, pasts, max_iteration=100, session_name=None):
-        self.sess.run((self.reseed_memory_operations, self.input.initializer, self.pasts.initializer),
+        self.sess.run((self.input.initializer, self.pasts.initializer),
                       feed_dict={self.input_initializer: input, self.pasts_initializer: pasts})
         for step in xrange(max_iteration):
             v_, m_, f_ = self.sess.run((self.learn_content_operation, self.memorize_operations, self.improve_focus_operations))
@@ -51,6 +51,7 @@ class Machine:
         print "Focus: ", f_
         print "Memory: ", m_
         print "-----------"
+        self.sess.run(self.reseed_memory_operations)
         if session_name is not None:
             self.saver.save(self.sess, session_name)
 

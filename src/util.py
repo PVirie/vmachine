@@ -20,7 +20,7 @@ def cross_entropy(y, z, variables, rate=0.001):
 
 
 def l2_loss(y, z, variables, rate=0.001):
-    cost = tf.reduce_sum((z - y)**2)
+    cost = tf.reduce_sum(tf.squared_difference(z, y))
     training_op = tf.train.AdamOptimizer(rate).minimize(cost, var_list=variables)
     return {"op": training_op, "cost": cost}
 

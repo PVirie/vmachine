@@ -67,11 +67,12 @@ if __name__ == '__main__':
 
     sess.run(tf.global_variables_initializer())
 
+    reseed = bnet.get_reseed_operation()
     for i in xrange(10):
         # shift memory anchor
-        print sess.run(bnet.get_reseed_operation())
         for j in xrange(100):
             print sess.run(ops[i])
+        print sess.run(reseed)
 
     # sess.run(bnet.get_reset_operation())
 

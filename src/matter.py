@@ -50,16 +50,16 @@ class Matter:
         penalty_term = tf.constant(0, dtype=tf.float32)
         for i in xrange(len(all_vars)):
             penalty_term = penalty_term + tf.reduce_mean(tf.stop_gradient(all_Fs[i][0]) * tf.square(all_vars[i] - tf.stop_gradient(all_Fs[i][1])))
-        grads = tf.gradients(cost + penalty_term * self.penalty, all_vars)
-        # grad of the likelihood is then -grads
-        likelihood = - cost
-        d_likelihood = tf.gradients(tf.log(likelihood), all_vars)
+        objective = cost + penalty_term * self.penalty
+        grads = tf.gradients(objective, all_vars)
+        L_grads = tf.gradients(-cost, all_vars)
+        likelihood = tf.exp(-cost)
 
         collect_stat_ops = []
-        for i in xrange(len(d_likelihood)):
-            if(d_likelihood[i] is None):
+        for i in xrange(len(L_grads)):
+            if(L_grads[i] is None):
                 continue
-            collect_stat_ops.append(tf.assign(all_Fs[i][2], all_Fs[i][2] * self.stat_mov + likelihood * tf.square(d_likelihood[i]) * (1 - self.stat_mov)).op)
+            collect_stat_ops.append(tf.assign(all_Fs[i][2], all_Fs[i][2] * self.stat_mov + likelihood * tf.square(L_grads[i]) * (1 - self.stat_mov)).op)
         collect_stat_ops.append(tf.assign(self.unnormalized_partition, self.unnormalized_partition * self.stat_mov + likelihood * (1 - self.stat_mov)).op)
 
         return zip(grads, all_vars), collect_stat_ops
@@ -80,7 +80,7 @@ if __name__ == '__main__':
     sess = tf.Session()
 
     input_size = 100
-    matter = Matter([input_size, input_size, input_size], tf.sigmoid, penalty=1e5, mov=0.99, stat_mov=0.90)
+    matter = Matter([input_size, input_size, input_size], tf.sigmoid, penalty=1e4, mov=0.90, stat_mov=0.90)
     input = tf.placeholder(tf.float32, [1, input_size])
     output = tf.placeholder(tf.float32, [1, input_size])
     gen = matter.forward(input)

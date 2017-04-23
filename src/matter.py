@@ -6,10 +6,11 @@ import util
 class Matter:
     # implement overcoming catastrophic forgetting based on https://arxiv.org/pdf/1612.00796.pdf
 
-    def __init__(self, layers, activation=tf.sigmoid, penalty=0.1, mov=0.999):
+    def __init__(self, layers, activation=tf.sigmoid, penalty=0.1, mov=0.999, stat_mov=0.99):
         self.f = activation
         self.mov = mov
         self.penalty = penalty
+        self.stat_mov = stat_mov
         self.Ws = []
         self.Bs = []
         self.input_bias = tf.Variable(np.zeros((layers[0])), dtype=tf.float32)
@@ -17,18 +18,18 @@ class Matter:
         # each = (Fisher information, previous optimal parameters)
         self.vWs = []
         self.vBs = []
-        self.vBias = (tf.Variable(np.zeros((layers[0])), dtype=tf.float32), tf.Variable(np.zeros((layers[0])), dtype=tf.float32))
+        self.vBias = [tf.Variable(np.zeros((layers[0])), dtype=tf.float32)] * 3
+
+        self.unnormalized_partition = tf.Variable(1, dtype=tf.float32)
 
         for i in xrange(1, len(layers)):
             self.Ws.append(tf.Variable(util.random_uniform(layers[i - 1], layers[i]), dtype=tf.float32))
-            self.vWs.append((tf.Variable(np.zeros((layers[i - 1], layers[i])), dtype=tf.float32),
-                             tf.Variable(np.zeros((layers[i - 1], layers[i])), dtype=tf.float32)))
+            self.vWs.append([tf.Variable(np.zeros((layers[i - 1], layers[i])), dtype=tf.float32)] * 3)
             self.Bs.append(tf.Variable(np.zeros((layers[i])), dtype=tf.float32))
-            self.vBs.append((tf.Variable(np.zeros((layers[i])), dtype=tf.float32),
-                             tf.Variable(np.zeros((layers[i])), dtype=tf.float32)))
+            self.vBs.append([tf.Variable(np.zeros((layers[i])), dtype=tf.float32)] * 3)
 
     def debug(self):
-        return [x[0] for x in self.vWs]
+        return [x[1] for x in self.vWs]
 
     def forward(self, input):
         output = input
@@ -48,22 +49,29 @@ class Matter:
         all_Fs = self.vWs + self.vBs + [self.vBias]
         penalty_term = tf.constant(0, dtype=tf.float32)
         for i in xrange(len(all_vars)):
-            penalty_term = penalty_term + tf.reduce_sum(tf.stop_gradient(all_Fs[i][0]) * tf.square(all_vars[i] - tf.stop_gradient(all_Fs[i][1])))
+            penalty_term = penalty_term + tf.reduce_mean(tf.stop_gradient(all_Fs[i][0]) * tf.square(all_vars[i] - tf.stop_gradient(all_Fs[i][1])))
         grads = tf.gradients(cost + penalty_term * self.penalty, all_vars)
+        # grad of the likelihood is then -grads
+        likelihood = - cost
+        d_likelihood = tf.gradients(tf.log(likelihood), all_vars)
 
-        return zip(grads, all_vars)
+        collect_stat_ops = []
+        for i in xrange(len(d_likelihood)):
+            if(d_likelihood[i] is None):
+                continue
+            collect_stat_ops.append(tf.assign(all_Fs[i][2], all_Fs[i][2] * self.stat_mov + likelihood * tf.square(d_likelihood[i]) * (1 - self.stat_mov)).op)
+        collect_stat_ops.append(tf.assign(self.unnormalized_partition, self.unnormalized_partition * self.stat_mov + likelihood * (1 - self.stat_mov)).op)
 
-    def get_reseed_operation(self, cost):
+        return zip(grads, all_vars), collect_stat_ops
+
+    def get_reseed_operation(self):
 
         all_vars = self.Ws + self.Bs + [self.input_bias]
         all_Fs = self.vWs + self.vBs + [self.vBias]
-        grads = tf.gradients(cost, all_vars)
         self.reseed_ops = []
-        for i in xrange(len(grads)):
-            if(grads[i] is None):
-                continue
-            self.reseed_ops.append(tf.assign(all_Fs[i][0], all_Fs[i][0] * self.mov + tf.square(grads[i]) * (1 - self.mov)))
-            self.reseed_ops.append(tf.assign(all_Fs[i][1], all_vars[i]))
+        for i in xrange(len(all_vars)):
+            self.reseed_ops.append(tf.assign(all_Fs[i][0], all_Fs[i][0] * self.mov + (1 - self.mov) * all_Fs[i][2] / self.unnormalized_partition).op)
+            self.reseed_ops.append(tf.assign(all_Fs[i][1], all_vars[i]).op)
 
         return self.reseed_ops
 
@@ -72,13 +80,15 @@ if __name__ == '__main__':
     sess = tf.Session()
 
     input_size = 100
-    matter = Matter([input_size, input_size, input_size], tf.nn.elu, penalty=1e8, mov=0.99)
+    matter = Matter([input_size, input_size, input_size], tf.sigmoid, penalty=1e5, mov=0.99, stat_mov=0.90)
     input = tf.placeholder(tf.float32, [1, input_size])
     output = tf.placeholder(tf.float32, [1, input_size])
     gen = matter.forward(input)
     cost = tf.reduce_sum(tf.squared_difference(gen, output))
-    grads = util.apply_gradients(matter.gradients(cost), cost, 0.01)
-    reseed = matter.get_reseed_operation(cost)
+    grads, stats = matter.gradients(cost)
+    training_op = tf.train.AdamOptimizer(0.001).apply_gradients(grads)
+    optimize_op = {"op": training_op, "cost": cost, "stat": stats}
+    reseed = matter.get_reseed_operation()
     # grads = util.l2_loss(output, gen, tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES), 0.01)
 
     sess.run(tf.global_variables_initializer())
@@ -87,13 +97,13 @@ if __name__ == '__main__':
     outputs = []
     for i in xrange(10):
         inp = np.random.rand(1, input_size)
-        out = np.multiply(inp, inp)
+        out = np.random.rand(1, input_size)
         inputs.append(inp)
         outputs.append(out)
         for j in xrange(500):
-            print sess.run(grads, feed_dict={input: inp, output: out})
-        sess.run(reseed, feed_dict={input: inp, output: out})
-    sess.run(matter.debug())
+            print sess.run(optimize_op, feed_dict={input: inp, output: out})
+        # print sess.run(matter.debug())
+        print sess.run(reseed)
 
     for i in xrange(10):
         print sess.run(tf.reduce_sum(tf.squared_difference(output, gen)), feed_dict={input: inputs[i], output: outputs[i]})

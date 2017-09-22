@@ -20,8 +20,15 @@ class Transceducer:
         self.reset_ops.append(tf.assign(self.C, util.random_uniform(context_size, memory_size)))
         self.reset_ops.append(tf.assign(self.R, util.random_uniform(recall_size, memory_size)))
 
+    def filter(self, h):
+        h = tf.one_hot(tf.argmax(h, axis=1), self.unit_sizes[0], 1.0, 0.0)
+        return h
+
+    def ceil(self, h):
+        return tf.tile(tf.reduce_max(h, axis=1, keep_dims=True), [1, self.unit_sizes[0]])
+
     def infer(self, context):
-        h_ = tf.nn.softmax(tf.matmul(context, self.C), dim=-1)
+        h_ = self.filter(tf.matmul(context, self.C))
         v_ = tf.matmul(h_, self.R, transpose_b=True)
         return v_
 
@@ -29,8 +36,8 @@ class Transceducer:
 
         h_ = tf.nn.softmax(tf.matmul(context, self.C), dim=-1)
         h = tf.where(
-            tf.tile(tf.reduce_max(h_, axis=1, keep_dims=True) > 0.8, [1, self.unit_sizes[0]]),
-            tf.one_hot(tf.argmax(h_, axis=1), self.unit_sizes[0], 1.0, 0.0),
+            self.ceil(h_) > 0.8,
+            self.filter(h_),
             tf.tile(self.seed, [tf.shape(context)[0], 1]))
 
         context_ = tf.matmul(h, self.C, transpose_b=True)
@@ -65,7 +72,7 @@ if __name__ == '__main__':
     for i in xrange(10):
         context = tf.constant(np.random.rand(1, context_size) - 0.5, dtype=tf.float32)
         input = tf.constant(np.random.rand(1, recall_size) - 0.5, dtype=tf.float32)
-        output = bnet.infer(tf.nn.dropout(context, 0.9))
+        output = bnet.infer(tf.nn.dropout(context, 0.5))
         grads, delta = bnet.gradients(context, input)
         # this memory learning rate can be huge (convex).
         ops.append(util.apply_gradients(grads, delta, 1.0))

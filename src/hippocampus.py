@@ -3,41 +3,44 @@ import numpy as np
 import util
 
 
-class BeliefNet:
+class Transceducer:
 
-    def __init__(self, unit_size):
-        self.unit_size = unit_size
-        self.W = tf.Variable(util.random_uniform(unit_size, unit_size), dtype=tf.float32)
+    def __init__(self, memory_size, context_size, recall_size):
+        self.unit_sizes = (memory_size, context_size, recall_size)
+        self.C = tf.Variable(util.random_uniform(context_size, memory_size), dtype=tf.float32)
+        self.R = tf.Variable(util.random_uniform(recall_size, memory_size), dtype=tf.float32)
 
-        s = np.zeros((1, unit_size), dtype=np.float32)
+        s = np.zeros((1, memory_size), dtype=np.float32)
         s[0, 0] = 1
-        shifter = tf.constant(util.build_cpu_shift_mat(unit_size), dtype=tf.float32)
+        shifter = tf.constant(util.build_cpu_shift_mat(memory_size), dtype=tf.float32)
         self.seed = tf.Variable(s, dtype=tf.float32)
         self.reseed_ops = tf.assign(self.seed, tf.matmul(self.seed, shifter))
 
         self.reset_ops = []
-        self.reset_ops.append(tf.assign(self.W, util.random_uniform(unit_size, unit_size)))
+        self.reset_ops.append(tf.assign(self.C, util.random_uniform(context_size, memory_size)))
+        self.reset_ops.append(tf.assign(self.R, util.random_uniform(recall_size, memory_size)))
 
-    def forward(self, input):
-        h = tf.matmul(input, self.W)
-        h_ = tf.nn.softmax(h, dim=-1)
-        return h_
-
-    def backward(self, h):
-        v_ = tf.matmul(h, self.W, transpose_b=True)
+    def infer(self, context):
+        h_ = tf.nn.softmax(tf.matmul(context, self.C), dim=-1)
+        v_ = tf.matmul(h_, self.R, transpose_b=True)
         return v_
 
-    def gradients(self, input):
+    def gradients(self, context, recall):
+
+        h_ = tf.nn.softmax(tf.matmul(context, self.C), dim=-1)
+        h = tf.where(
+            tf.tile(tf.reduce_max(h_, axis=1, keep_dims=True) > 0.8, [1, self.unit_sizes[0]]),
+            tf.one_hot(tf.argmax(h_, axis=1), self.unit_sizes[0], 1.0, 0.0),
+            tf.tile(self.seed, [tf.shape(context)[0], 1]))
+
+        context_ = tf.matmul(h, self.C, transpose_b=True)
+        recall_ = tf.matmul(h, self.R, transpose_b=True)
 
         grads = []
+        grads.append((tf.matmul(-context + context_, h, transpose_a=True), self.C))
+        grads.append((tf.matmul(-recall + recall_, h, transpose_a=True), self.R))
 
-        v = input
-        h = tf.tile(self.seed, [tf.shape(input)[0], 1])
-        v_ = self.backward(h)
-
-        grads.append((tf.matmul(-v + v_, h, transpose_a=True), self.W))
-
-        return grads, tf.reduce_sum((v - v_)**2)
+        return grads, tf.reduce_sum((recall - recall_)**2)
 
     def get_reset_operation(self):
         return self.reset_ops
@@ -49,19 +52,25 @@ class BeliefNet:
 if __name__ == '__main__':
     sess = tf.Session()
 
-    input_size = 100
+    memory_size = 100
+    context_size = 20
+    recall_size = 10
 
-    bnet = BeliefNet(input_size)
+    bnet = Transceducer(memory_size, context_size, recall_size)
 
+    contexts = []
     inputs = []
     outputs = []
     ops = []
     for i in xrange(10):
-        input = tf.constant(np.random.rand(1, input_size), dtype=tf.float32)
-        output = bnet.backward(bnet.forward(tf.nn.dropout(input, 0.5)))
-        grads, delta = bnet.gradients(input)
+        context = tf.constant(np.random.rand(1, context_size) - 0.5, dtype=tf.float32)
+        input = tf.constant(np.random.rand(1, recall_size) - 0.5, dtype=tf.float32)
+        output = bnet.infer(tf.nn.dropout(context, 0.9))
+        grads, delta = bnet.gradients(context, input)
         # this memory learning rate can be huge (convex).
         ops.append(util.apply_gradients(grads, delta, 1.0))
+
+        contexts.append(context)
         inputs.append(input)
         outputs.append(output)
 

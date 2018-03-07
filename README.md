@@ -1,4 +1,4 @@
-# vmachine
+# virie's machine
 An implementation of a [thinking machine][rf1].
 
 <cite>Virie, P. (2015). (Yet) Another Theoretical Model of Thinking. arXiv preprint arXiv:1511.02455.<cite>
